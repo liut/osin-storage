@@ -50,6 +50,8 @@ func (s *Storage) GetClient(id string) (osin.Client, error) {
 	err := orm.NewQuery(s.db, c).Where("code = ?", id).Select()
 	if err == pg.ErrNoRows {
 		return nil, errNotFound
+	} else if err != nil {
+		log.Printf("get client %s err: %s", id, err)
 	}
 	return c, err
 }
@@ -106,7 +108,7 @@ func (s *Storage) SaveAuthorize(data *osin.AuthorizeData) (err error) {
 	}
 
 	_, err = s.db.Exec(
-		"INSERT INTO oauth.authorization (client, code, expires_in, scopes, redirect_uri, state, created, extra) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+		"INSERT INTO oauth.authorize (client, code, expires_in, scopes, redirect_uri, state, created, extra) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
 		data.Client.GetId(),
 		data.Code,
 		data.ExpiresIn,
@@ -130,7 +132,7 @@ func (s *Storage) LoadAuthorize(code string) (*osin.AuthorizeData, error) {
 	var extra JsonKV
 	var cid string
 	scan := orm.Scan(&cid, &data.Code, &data.ExpiresIn, &data.Scope, &data.RedirectUri, &data.State, &data.CreatedAt, &extra)
-	_, err := s.db.QueryOne(scan, "SELECT client, code, expires_in, scopes, redirect_uri, state, created, extra FROM oauth.authorization WHERE code=? LIMIT 1", code)
+	_, err := s.db.QueryOne(scan, "SELECT client, code, expires_in, scopes, redirect_uri, state, created, extra FROM oauth.authorize WHERE code=? LIMIT 1", code)
 	if err == pg.ErrNoRows {
 		return nil, errNotFound
 	} else if err != nil {
@@ -154,7 +156,7 @@ func (s *Storage) LoadAuthorize(code string) (*osin.AuthorizeData, error) {
 
 // RemoveAuthorize revokes or deletes the authorization code.
 func (s *Storage) RemoveAuthorize(code string) (err error) {
-	_, err = s.db.Exec("DELETE FROM oauth.authorization WHERE code=?", code)
+	_, err = s.db.Exec("DELETE FROM oauth.authorize WHERE code=?", code)
 	return nil
 }
 

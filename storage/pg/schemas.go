@@ -1,6 +1,6 @@
 package pg
 
-var tables = []string{"oauth.client", "oauth.access", "oauth.refresh", "oauth.authorization"}
+var tables = []string{"oauth.client", "oauth.access", "oauth.refresh", "oauth.authorize"}
 var schemas = []string{
 	"CREATE SCHEMA IF NOT EXISTS oauth",
 	`CREATE TABLE IF NOT EXISTS oauth.client
@@ -11,9 +11,9 @@ var schemas = []string{
 	redirect_uri varchar(255) NOT NULL DEFAULT '',
 	userdata jsonb NOT NULL DEFAULT '{}'::jsonb,
 	created timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-	allowed_grant_types varchar(255) DEFAULT '',
-	allowed_response_types varchar(255) DEFAULT '',
-	allowed_scopes varchar(255) DEFAULT '',
+	allowed_grant_types jsonb DEFAULT '[]'::jsonb,
+	allowed_response_types jsonb DEFAULT '[]'::jsonb,
+	allowed_scopes jsonb DEFAULT '[]'::jsonb,
 	PRIMARY KEY (code)
 )`,
 	`CREATE TABLE IF NOT EXISTS oauth.access
@@ -39,7 +39,7 @@ var schemas = []string{
 	created timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	PRIMARY KEY (token)
 	)`,
-	`CREATE TABLE IF NOT EXISTS oauth.authorization
+	`CREATE TABLE IF NOT EXISTS oauth.authorize
 (
 	id serial,
 	code varchar(40) NOT NULL,

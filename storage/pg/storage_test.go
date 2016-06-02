@@ -25,7 +25,7 @@ var userDataMock = JsonKV{"name": "foobar"}
 
 func init() {
 	log.SetFlags(log.Ltime | log.Lshortfile)
-	pg.SetLogger(log.New(os.Stdout, "pg>", log.Ltime|log.Lshortfile))
+	pg.SetLogger(log.New(os.Stderr, "pg>", log.Ltime|log.Lshortfile))
 }
 
 func TestMain(m *testing.M) {
@@ -50,9 +50,10 @@ func TestMain(m *testing.M) {
 }
 
 func tearDown() {
-	for _, t := range tables {
-		db.Exec(fmt.Sprintf("TRUNCATE TABLE %s", t))
-	}
+	db.Exec("TRUNCATE TABLE oauth.access")
+	db.Exec("TRUNCATE TABLE oauth.authorize")
+	db.Exec("DELETE FROM oauth.client WHERE code in ('1', '3', 'dupe')")
+	db.Exec("TRUNCATE TABLE oauth.refresh")
 	// db.Exec("DROP SCHEMA oauth CASCADE")
 }
 
@@ -149,7 +150,7 @@ func TestAccessOperations(t *testing.T) {
 		RedirectUri: "http://localhost/",
 		State:       "state",
 		CreatedAt:   time.Now().Round(time.Second),
-		UserData:    nil,
+		UserData:    userDataEmpty,
 	}
 	nestedAccess := &osin.AccessData{
 		Client:        client,

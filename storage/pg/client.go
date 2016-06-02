@@ -12,6 +12,16 @@ var _ osin.Client = (*Client)(nil)
 
 type JsonKV map[string]interface{}
 
+func toJsonKV(src interface{}) (JsonKV, error) {
+	switch s := src.(type) {
+	case JsonKV:
+		return s, nil
+	case map[string]interface{}:
+		return JsonKV(s), nil
+	}
+	return nil, errInvalidJsonb
+}
+
 type Client struct {
 	TableName struct{} `sql:"oauth.client" json:"-"`
 

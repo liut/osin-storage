@@ -20,10 +20,10 @@ var schemas = []string{
 (
 	id serial,
 	client varchar(120) NOT NULL,
-	authorize_code varchar(40) NOT NULL,
-	access_token varchar(40) NOT NULL ,
-	refresh_token varchar(40) NOT NULL DEFAULT '',
-	previous varchar(40) NOT NULL DEFAULT '',
+	authorize_code varchar(140) NOT NULL,
+	access_token varchar(240) NOT NULL ,
+	refresh_token varchar(240) NOT NULL DEFAULT '',
+	previous varchar(240) NOT NULL DEFAULT '',
 	expires_in int NOT NULL DEFAULT 86400,
 	scopes varchar(255) NOT NULL DEFAULT '',
 	redirect_uri varchar(255) NOT NULL DEFAULT '',
@@ -34,15 +34,15 @@ var schemas = []string{
 	PRIMARY KEY (id)
 )`,
 	`CREATE TABLE IF NOT EXISTS oauth.refresh(
-	token varchar(40) NOT NULL,
-	access varchar(40) NOT NULL ,
+	token varchar(240) NOT NULL,
+	access varchar(240) NOT NULL ,
 	created timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	PRIMARY KEY (token)
 	)`,
 	`CREATE TABLE IF NOT EXISTS oauth.authorize
 (
 	id serial,
-	code varchar(40) NOT NULL,
+	code varchar(140) NOT NULL,
 	client varchar(120) NOT NULL,
 	redirect_uri varchar(255) NOT NULL DEFAULT '',
 	expires_in int NOT NULL DEFAULT 86400,

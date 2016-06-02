@@ -100,8 +100,9 @@ func (s *Storage) SaveAuthorize(data *osin.AuthorizeData) (err error) {
 	// if err != nil {
 	// 	return err
 	// }
-	if _, ok := data.UserData.(JsonKV); !ok {
-		return errInvalidJsonb
+	if _, err = toJsonKV(data.UserData); err != nil {
+		log.Printf("authorized.userdata %+v", data.UserData)
+		return
 	}
 	if data.UserData == nil {
 		data.UserData = JsonKV{}
@@ -163,6 +164,12 @@ func (s *Storage) RemoveAuthorize(code string) (err error) {
 // SaveAccess writes AccessData.
 // If RefreshToken is not blank, it must save in a way that can be loaded using LoadRefresh.
 func (s *Storage) SaveAccess(data *osin.AccessData) (err error) {
+	_, err = s.LoadAccess(data.AccessToken)
+	if err == nil {
+		return nil
+	} else if err != errNotFound {
+		return
+	}
 	prev := ""
 	authorizeData := &osin.AuthorizeData{}
 
@@ -176,10 +183,10 @@ func (s *Storage) SaveAccess(data *osin.AccessData) (err error) {
 
 	var (
 		extra JsonKV
-		ok    bool
 	)
-	if extra, ok = data.UserData.(JsonKV); !ok {
-		return errInvalidJsonb
+	if extra, err = toJsonKV(data.UserData); err != nil {
+		log.Printf("access.userdata %+v", data.UserData)
+		return
 	}
 
 	return s.db.RunInTransaction(func(tx *pg.Tx) (err error) {
@@ -191,17 +198,13 @@ func (s *Storage) SaveAccess(data *osin.AccessData) (err error) {
 		}
 
 		if data.Client == nil {
-			tx.Rollback()
+			log.Print("access.client is nil")
 			return errNilClient
 		}
 
 		_, err = tx.Exec("INSERT INTO oauth.access (client, authorize_code, previous, access_token, refresh_token, expires_in, scopes, redirect_uri, created, extra) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", data.Client.GetId(), authorizeData.Code, prev, data.AccessToken, data.RefreshToken, data.ExpiresIn, data.Scope, data.RedirectUri, data.CreatedAt, extra)
 		if err != nil {
 			log.Printf("insert error %s", err)
-			if rbe := tx.Rollback(); rbe != nil {
-				log.Printf("rollback error %s", rbe)
-				return rbe
-			}
 			return err
 		}
 		log.Print("save access OK")
@@ -282,9 +285,6 @@ func (s *Storage) RemoveRefresh(code string) error {
 
 func (s *Storage) saveRefresh(tx txDber, refresh, access string) (err error) {
 	_, err = tx.Exec("INSERT INTO oauth.refresh (token, access) VALUES (?, ?)", refresh, access)
-	if err != nil {
-		err = tx.Rollback()
-	}
 	return
 }
 

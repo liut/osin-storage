@@ -20,6 +20,7 @@ import (
 var _ = fmt.Sprintf
 var db *pg.DB
 var store *Storage
+var clientMetaEmpty = ClientMeta{}
 var userDataEmpty = JsonKV{}
 var userDataMock = JsonKV{"name": "foobar"}
 
@@ -58,19 +59,19 @@ func tearDown() {
 }
 
 func TestClientOperations(t *testing.T) {
-	create := &Client{Code: "1", Secret: "secret", RedirectUri: "http://localhost/", UserData: userDataEmpty}
+	create := &Client{Code: "1", Secret: "secret", RedirectUri: "http://localhost/", UserData: clientMetaEmpty}
 	createClient(t, store, create)
 	getClient(t, store, create)
 
-	update := &Client{Code: "1", Secret: "secret123", RedirectUri: "http://www.google.com/", UserData: userDataEmpty}
+	update := &Client{Code: "1", Secret: "secret123", RedirectUri: "http://www.google.com/", UserData: clientMetaEmpty}
 	updateClient(t, store, update)
 	getClient(t, store, update)
 }
 
 func TestAuthorizeOperations(t *testing.T) {
 	// client := &Client{Code: "2", Secret: "secret", RedirectUri: "http://localhost/", UserData: userDataEmpty}
-	client := NewClient("2", "2", "secret", "http://localhost/")
-	client.UserData = userDataEmpty
+	client := NewClient("2", "secret", "http://localhost/")
+	client.UserData = clientMetaEmpty
 	createClient(t, store, client)
 
 	for _, authorize := range []*osin.AuthorizeData{
@@ -111,8 +112,8 @@ func TestAuthorizeOperations(t *testing.T) {
 
 func TestStoreFailsOnInvalidUserData(t *testing.T) {
 	// client := &Client{Code: "3", Secret: "secret", RedirectUri: "http://localhost/", UserData: userDataEmpty}
-	client := NewClient("3", "3", "secret", "http://localhost/")
-	client.UserData = userDataEmpty
+	client := NewClient("3", "secret", "http://localhost/")
+	client.UserData = clientMetaEmpty
 	authorize := &osin.AuthorizeData{
 		Client:      client,
 		Code:        uuid.New(),
@@ -141,7 +142,7 @@ func TestStoreFailsOnInvalidUserData(t *testing.T) {
 
 func TestAccessOperations(t *testing.T) {
 	// client := &Client{Code: "3", Secret: "secret", RedirectUri: "http://localhost/", UserData: userDataEmpty}
-	client := NewClient("3", "3", "secret", "http://localhost/")
+	client := NewClient("3", "secret", "http://localhost/")
 	authorize := &osin.AuthorizeData{
 		Client:      client,
 		Code:        uuid.New(),
@@ -209,7 +210,7 @@ func TestAccessOperations(t *testing.T) {
 }
 
 func TestRefreshOperations(t *testing.T) {
-	client := &Client{Code: "4", Secret: "secret", RedirectUri: "http://localhost/", UserData: userDataEmpty}
+	client := &Client{Code: "4", Secret: "secret", RedirectUri: "http://localhost/", UserData: clientMetaEmpty}
 	type test struct {
 		access *osin.AccessData
 	}
@@ -270,10 +271,10 @@ func TestRefreshOperations(t *testing.T) {
 }
 
 func TestErrors(t *testing.T) {
-	client := &Client{Code: "dupe", UserData: userDataEmpty}
+	client := &Client{Code: "dupe", UserData: clientMetaEmpty}
 	assert.Nil(t, store.CreateClient(client))
 	assert.NotNil(t, store.CreateClient(client))
-	assert.NotNil(t, store.CreateClient(&Client{Code: "", UserData: userDataEmpty}))
+	assert.NotNil(t, store.CreateClient(&Client{Code: "", UserData: clientMetaEmpty}))
 	assert.NotNil(t, store.SaveAccess(&osin.AccessData{AccessToken: "", AccessData: &osin.AccessData{}, AuthorizeData: &osin.AuthorizeData{}}))
 	assert.Nil(t, store.SaveAuthorize(&osin.AuthorizeData{Code: "a", Client: client, UserData: userDataMock}))
 	assert.NotNil(t, store.SaveAuthorize(&osin.AuthorizeData{Code: "a", Client: client}))

@@ -6,7 +6,6 @@ var schemas = []string{
 	`CREATE TABLE IF NOT EXISTS oauth.client
 (
 	code varchar(80) NOT NULL , -- client_id
-	name varchar(120) NOT NULL,
 	secret varchar(40) NOT NULL,
 	redirect_uri varchar(255) NOT NULL DEFAULT '',
 	userdata jsonb NOT NULL DEFAULT '{}'::jsonb,

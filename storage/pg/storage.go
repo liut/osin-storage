@@ -58,9 +58,9 @@ func (s *Storage) GetClient(id string) (osin.Client, error) {
 
 // UpdateClient updates the client (identified by it's id) and replaces the values with the values of client.
 func (s *Storage) UpdateClient(c osin.Client) (err error) {
-	_c := NewClient(c.GetId(), c.GetId(), c.GetSecret(), c.GetRedirectUri())
+	_c := NewClient(c.GetId(), c.GetSecret(), c.GetRedirectUri())
 	data := c.GetUserData()
-	if extra, ok := data.(JsonKV); ok {
+	if extra, ok := data.(ClientMeta); ok {
 		_c.UserData = extra
 	}
 	_, err = orm.NewQuery(s.db, _c).
@@ -74,12 +74,12 @@ func (s *Storage) UpdateClient(c osin.Client) (err error) {
 
 // CreateClient stores the client in the database and returns an error, if something went wrong.
 func (s *Storage) CreateClient(c osin.Client) (err error) {
-	_c := NewClient(c.GetId(), c.GetId(), c.GetSecret(), c.GetRedirectUri())
+	_c := NewClient(c.GetId(), c.GetSecret(), c.GetRedirectUri())
 	if _c.GetId() == "" {
 		return errNilClient
 	}
 	data := c.GetUserData()
-	if extra, ok := data.(JsonKV); ok {
+	if extra, ok := data.(ClientMeta); ok {
 		_c.UserData = extra
 	}
 
@@ -100,7 +100,7 @@ func (s *Storage) SaveAuthorize(data *osin.AuthorizeData) (err error) {
 	// if err != nil {
 	// 	return err
 	// }
-	if _, err = toJsonKV(data.UserData); err != nil {
+	if _, err = ToJsonKV(data.UserData); err != nil {
 		log.Printf("authorized.userdata %+v", data.UserData)
 		return
 	}
@@ -184,7 +184,7 @@ func (s *Storage) SaveAccess(data *osin.AccessData) (err error) {
 	var (
 		extra JsonKV
 	)
-	if extra, err = toJsonKV(data.UserData); err != nil {
+	if extra, err = ToJsonKV(data.UserData); err != nil {
 		log.Printf("access.userdata %+v", data.UserData)
 		return
 	}

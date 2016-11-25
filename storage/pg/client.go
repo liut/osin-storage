@@ -22,6 +22,14 @@ func ToJsonKV(src interface{}) (JsonKV, error) {
 	return nil, errInvalidJsonb
 }
 
+func (m JsonKV) WithKey(key string) (v interface{}) {
+	var ok bool
+	if v, ok = m[key]; ok {
+		return
+	}
+	return
+}
+
 type ClientMeta struct {
 	Site uint8  `json:"site_id"`
 	Name string `json:"name"`

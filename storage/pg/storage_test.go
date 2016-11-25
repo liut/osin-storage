@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"gopkg.in/pg.v4"
 
-	"lcgc/platform/osin-storage/storage"
+	"github.com/liut/osin-storage/storage"
 )
 
 var _ = fmt.Sprintf

@@ -9,7 +9,11 @@ import (
 	"github.com/RangelReale/osin"
 	"gopkg.in/pg.v4"
 	"gopkg.in/pg.v4/orm"
+
+	"github.com/liut/osin-storage/storage"
 )
+
+var _ storage.Storage = (*Storage)(nil)
 
 // Storage implements interface "github.com/RangelReale/osin".Storage and interface "github.com/ory-am/osin-storage".Storage
 type Storage struct {
@@ -96,10 +100,6 @@ func (s *Storage) RemoveClient(code string) (err error) {
 
 // SaveAuthorize saves authorize data.
 func (s *Storage) SaveAuthorize(data *osin.AuthorizeData) (err error) {
-	// extra, err := assertToString(data.UserData)
-	// if err != nil {
-	// 	return err
-	// }
 	if _, err = ToJsonKV(data.UserData); err != nil {
 		log.Printf("authorized.userdata %+v", data.UserData)
 		return

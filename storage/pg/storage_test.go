@@ -55,7 +55,6 @@ func tearDown() {
 	db.Exec("TRUNCATE TABLE oauth.authorize")
 	db.Exec("DELETE FROM oauth.client WHERE code in ('1', '3', 'dupe')")
 	db.Exec("TRUNCATE TABLE oauth.refresh")
-	// db.Exec("DROP SCHEMA oauth CASCADE")
 }
 
 func TestClientOperations(t *testing.T) {

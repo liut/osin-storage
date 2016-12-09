@@ -19,7 +19,7 @@ func ToJsonKV(src interface{}) (JsonKV, error) {
 	case map[string]interface{}:
 		return JsonKV(s), nil
 	}
-	return nil, errInvalidJsonb
+	return nil, errInvalidJson
 }
 
 func (m JsonKV) WithKey(key string) (v interface{}) {
@@ -38,7 +38,8 @@ type ClientMeta struct {
 type Client struct {
 	TableName struct{} `sql:"oauth.client" json:"-"`
 
-	Code                 string     `sql:"code,pk" json:"code"`
+	Id                   int        `sql:"id,pk" json:"id"`
+	Code                 string     `sql:"code,unique" json:"code"`
 	Secret               string     `sql:"secret,notnull" json:"-"`
 	RedirectUri          string     `sql:"redirect_uri" json:"redirect_uri"`
 	UserData             ClientMeta `sql:"userdata" json:"userdata,omitempty"`

@@ -51,7 +51,7 @@ func (s *Storage) Close() {
 // GetClient loads the client by id
 func (s *Storage) GetClient(id string) (osin.Client, error) {
 	var c = new(Client)
-	err := orm.NewQuery(s.db, c).Where("code = ?", id).Select()
+	err := s.db.Model(c).Where("code = ?", id).Select()
 	if err == pg.ErrNoRows {
 		return nil, errNotFound
 	} else if err != nil {
@@ -67,7 +67,7 @@ func (s *Storage) UpdateClient(c osin.Client) (err error) {
 	if extra, ok := data.(ClientMeta); ok {
 		_c.UserData = extra
 	}
-	_, err = orm.NewQuery(s.db, _c).
+	_, err = s.db.Model(_c).
 		Column("secret", "redirect_uri", "userdata").
 		Where("code = ?", c.GetId()).
 		Returning("*").
@@ -87,14 +87,14 @@ func (s *Storage) CreateClient(c osin.Client) (err error) {
 		_c.UserData = extra
 	}
 
-	err = orm.Insert(s.db, _c)
+	err = s.db.Insert(_c)
 	return
 }
 
 // RemoveClient removes a client (identified by id) from the database. Returns an error if something went wrong.
 func (s *Storage) RemoveClient(code string) (err error) {
 	var c Client
-	_, err = orm.NewQuery(s.db, &c).Where("code = ?", code).Delete()
+	_, err = s.db.Model(&c).Where("code = ?", code).Delete()
 	return
 }
 
@@ -283,7 +283,7 @@ func (s *Storage) RemoveRefresh(code string) error {
 	return err
 }
 
-func (s *Storage) saveRefresh(tx txDber, refresh, access string) (err error) {
+func (s *Storage) saveRefresh(tx *pg.Tx, refresh, access string) (err error) {
 	_, err = tx.Exec("INSERT INTO oauth.refresh (token, access) VALUES (?, ?)", refresh, access)
 	return
 }

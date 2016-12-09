@@ -3,7 +3,7 @@ package pg
 import (
 	"errors"
 
-	"gopkg.in/pg.v4/types"
+	"gopkg.in/pg.v5/types"
 )
 
 var (

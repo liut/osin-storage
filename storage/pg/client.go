@@ -39,7 +39,7 @@ type Client struct {
 	TableName struct{} `sql:"oauth.client" json:"-"`
 
 	Code                 string     `sql:"code,pk" json:"code"`
-	Secret               string     `sql:"secret" json:"-"`
+	Secret               string     `sql:"secret,notnull" json:"-"`
 	RedirectUri          string     `sql:"redirect_uri" json:"redirect_uri"`
 	UserData             ClientMeta `sql:"userdata" json:"userdata,omitempty"`
 	CreatedAt            time.Time  `sql:"created" json:"created,omitempty"`

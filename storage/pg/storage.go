@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/RangelReale/osin"
-	"gopkg.in/pg.v4"
-	"gopkg.in/pg.v4/orm"
+	"gopkg.in/pg.v5"
+	"gopkg.in/pg.v5/orm"
 
 	"github.com/liut/osin-storage/storage"
 )
@@ -87,7 +87,7 @@ func (s *Storage) CreateClient(c osin.Client) (err error) {
 		_c.UserData = extra
 	}
 
-	err = orm.Create(s.db, _c)
+	err = orm.Insert(s.db, _c)
 	return
 }
 

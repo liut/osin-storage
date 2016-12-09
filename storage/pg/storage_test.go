@@ -12,7 +12,7 @@ import (
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gopkg.in/pg.v4"
+	"gopkg.in/pg.v5"
 
 	"github.com/liut/osin-storage/storage"
 )
@@ -33,7 +33,7 @@ func TestMain(m *testing.M) {
 	db = pg.Connect(&pg.Options{
 		User:     "sso",
 		Password: "sso",
-		Addr:     "192.168.99.100:54320",
+		Addr:     "127.0.0.1:54320",
 		Database: "sso",
 	})
 

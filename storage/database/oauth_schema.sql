@@ -2,6 +2,7 @@
 BEGIN;
 
 CREATE SCHEMA IF NOT EXISTS oauth;
+
 CREATE TABLE IF NOT EXISTS oauth.client
 (
 	id serial,
@@ -15,6 +16,7 @@ CREATE TABLE IF NOT EXISTS oauth.client
 	allowed_scopes jsonb DEFAULT '[]'::jsonb,
 	PRIMARY KEY (id)
 );
+
 CREATE TABLE IF NOT EXISTS oauth.access
 (
 	id serial,
@@ -31,12 +33,14 @@ CREATE TABLE IF NOT EXISTS oauth.access
 	created timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	PRIMARY KEY (id)
 );
+
 CREATE TABLE IF NOT EXISTS oauth.refresh(
 	token varchar(240) NOT NULL,
 	access varchar(240) NOT NULL ,
 	created timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	PRIMARY KEY (token)
 );
+
 CREATE TABLE IF NOT EXISTS oauth.authorize
 (
 	id serial,
@@ -51,6 +55,7 @@ CREATE TABLE IF NOT EXISTS oauth.authorize
 	UNIQUE (code),
 	PRIMARY KEY (id)
 );
+
 CREATE TABLE IF NOT EXISTS oauth.scopes
 (
 	id serial,

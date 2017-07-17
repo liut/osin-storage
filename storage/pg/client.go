@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/RangelReale/osin"
+	"github.com/liut/osin-storage/storage"
 )
 
 var _ = fmt.Sprintf
-var _ osin.Client = (*Client)(nil)
+var _ storage.Client = (*Client)(nil)
 
 type JsonKV map[string]interface{}
 
@@ -52,6 +52,10 @@ type Client struct {
 // func (c *Client) String() string {
 // 	return fmt.Sprintf("<oauth:Client code=%s>", c.Code)
 // }
+
+func (c *Client) GetName() string {
+	return c.UserData.Name
+}
 
 func (c *Client) GetId() string {
 	return c.Code

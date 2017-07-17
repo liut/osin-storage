@@ -311,7 +311,7 @@ func TestAssertToString(t *testing.T) {
 	assert.Equal(t, "foo", res)
 }
 
-func getClient(t *testing.T, store storage.Storage, set osin.Client) {
+func getClient(t *testing.T, store storage.Storage, set storage.Client) {
 	client, err := store.GetClient(set.GetId())
 	require.Nil(t, err)
 	// require.EqualValues(t, set, client)
@@ -321,14 +321,14 @@ func getClient(t *testing.T, store storage.Storage, set osin.Client) {
 	require.Equal(t, set.GetUserData(), client.GetUserData())
 }
 
-func createClient(t *testing.T, store storage.Storage, set osin.Client) {
+func createClient(t *testing.T, store storage.Storage, set storage.Client) {
 	require.Nil(t, store.CreateClient(set))
 }
 
-func updateClient(t *testing.T, store storage.Storage, set osin.Client) {
+func updateClient(t *testing.T, store storage.Storage, set storage.Client) {
 	require.Nil(t, store.UpdateClient(set))
 }
 
-func removeClient(t *testing.T, store storage.Storage, set osin.Client) {
+func removeClient(t *testing.T, store storage.Storage, set storage.Client) {
 	require.Nil(t, store.RemoveClient(set.GetId()))
 }

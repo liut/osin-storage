@@ -292,29 +292,6 @@ func TestErrors(t *testing.T) {
 	assert.Equal(t, ErrNotFound, err)
 }
 
-type ts struct{}
-
-func (s *ts) String() string {
-	return "foo"
-}
-
-// func TestAssertToString(t *testing.T) {
-// 	res, err := assertToString(struct{}{})
-// 	assert.NotNil(t, err)
-
-// 	res, err = assertToString("foo")
-// 	assert.Nil(t, err)
-// 	assert.Equal(t, "foo", res)
-
-// 	res, err = assertToString(nil)
-// 	assert.Nil(t, err)
-// 	assert.Equal(t, "", res)
-
-// 	res, err = assertToString(new(ts))
-// 	assert.Nil(t, err)
-// 	assert.Equal(t, "foo", res)
-// }
-
 func compareClient(t *testing.T, store storage.Storage, set storage.Client) {
 	client, err := store.GetClient(set.GetId())
 	require.Nil(t, err)

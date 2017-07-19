@@ -44,7 +44,6 @@ func (s *DbStorage) Close() {
 
 func (s *DbStorage) GetClient(id string) (c osin.Client, err error) {
 	c, err = s.GetClientWithCode(id)
-	// debug("GetClient: '%s'", id)
 	if err != nil {
 		log.Printf("Client %q not found", id)
 	}
@@ -60,7 +59,6 @@ func (s *DbStorage) SaveAuthorize(data *osin.AuthorizeData) error {
 		data.UserData = JsonKV{}
 	}
 
-	// debug("SaveAuthorize: '%s', extra '%s'\n", data.Code, extra)
 	r, err := s.db.Exec(`INSERT INTO oauth.authorize(code, client_id, extra, redirect_uri, expires_in, scopes, created)
 		    VALUES($1, $2, $3, $4, $5, $6, $7);`,
 		data.Code, data.Client.GetId(), data.UserData,
@@ -73,7 +71,6 @@ func (s *DbStorage) SaveAuthorize(data *osin.AuthorizeData) error {
 }
 
 func (s *DbStorage) LoadAuthorize(code string) (a *osin.AuthorizeData, err error) {
-	// debug("LoadAuthorize: '%s'\n", code)
 	var (
 		client_id string
 		extra     JsonKV
@@ -100,7 +97,6 @@ func (s *DbStorage) LoadAuthorize(code string) (a *osin.AuthorizeData, err error
 }
 
 func (s *DbStorage) RemoveAuthorize(code string) error {
-	// debug("RemoveAuthorize: '%s'\n", code)
 	if code == "" {
 		log.Print("authorize code is empty")
 		return nil
@@ -120,7 +116,6 @@ func (s *DbStorage) RemoveAuthorize(code string) error {
 }
 
 func (s *DbStorage) SaveAccess(data *osin.AccessData) (err error) {
-	// debug("SaveAccess: '%s'\n", data.AccessToken)
 	_, err = s.LoadAccess(data.AccessToken)
 	if err == nil {
 		return nil
@@ -170,7 +165,6 @@ func (s *DbStorage) SaveAccess(data *osin.AccessData) (err error) {
 }
 
 func (s *DbStorage) LoadAccess(code string) (a *osin.AccessData, err error) {
-	// debug("LoadAccess: '%s'", code)
 	var (
 		cid, authorizeCode, prevAccessToken string
 		extra                               JsonKV
@@ -207,7 +201,6 @@ func (s *DbStorage) LoadAccess(code string) (a *osin.AccessData, err error) {
 }
 
 func (s *DbStorage) RemoveAccess(code string) error {
-	// debug("RemoveAccess: %s\n", code)
 	qs := func(tx DBTxer) error {
 		str := `DELETE FROM oauth.access WHERE access_token = $1;`
 		r, err := tx.Exec(str, code)
@@ -224,7 +217,6 @@ func (s *DbStorage) RemoveAccess(code string) error {
 }
 
 func (s *DbStorage) LoadRefresh(code string) (*osin.AccessData, error) {
-	// debug("LoadRefresh: %s\n", code)
 	var access string
 	err := s.db.QueryRow(`SELECT access FROM oauth.refresh WHERE token=$1 LIMIT 1`, code).Scan(&access)
 	if err == sql.ErrNoRows {
@@ -295,7 +287,6 @@ func (s *DbStorage) SaveClient(client storage.Client) error {
 	if c.Code == "" || c.Secret == "" || c.RedirectUri == "" {
 		return valueError
 	}
-	// debug("SaveClient: code %s, uri %s", c.Code, c.RedirectUri)
 
 	qs := func(tx DBTxer) (err error) {
 		var id int

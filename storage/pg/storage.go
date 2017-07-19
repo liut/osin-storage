@@ -286,16 +286,3 @@ func (s *Storage) saveRefresh(tx *pg.Tx, refresh, access string) (err error) {
 	_, err = tx.Exec("INSERT INTO oauth.refresh (token, access) VALUES (?, ?)", refresh, access)
 	return
 }
-
-func assertToString(in interface{}) (string, error) {
-	var ok bool
-	var data string
-	if in == nil {
-		return "", nil
-	} else if data, ok = in.(string); ok {
-		return data, nil
-	} else if str, ok := in.(fmt.Stringer); ok {
-		return str.String(), nil
-	}
-	return "", fmt.Errorf(`Could not assert "%v" to string`, in)
-}

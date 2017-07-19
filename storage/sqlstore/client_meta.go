@@ -36,8 +36,6 @@ func (m *JsonKV) Scan(value interface{}) (err error) {
 		err = json.Unmarshal(data, m)
 	case string:
 		err = json.Unmarshal([]byte(data), m)
-	default:
-		err = ErrInvalidJSON
 	}
 	return
 }
@@ -46,14 +44,6 @@ func (m *JsonKV) Scan(value interface{}) (err error) {
 func (m JsonKV) Value() (driver.Value, error) {
 	return json.Marshal(m)
 }
-
-// func (kv JsonKV) ToJSONText() (types.JSONText, error) {
-// 	b, err := json.Marshal(&kv)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	return types.JSONText(b), nil
-// }
 
 // ClientMeta
 type ClientMeta struct {

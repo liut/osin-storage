@@ -9,18 +9,15 @@ CREATE TABLE IF NOT EXISTS oauth.client
 	code varchar(80) NOT NULL UNIQUE, -- client_id
 	secret varchar(40) NOT NULL,
 	redirect_uri varchar(255) NOT NULL DEFAULT '',
-	userdata jsonb NOT NULL DEFAULT '{}'::jsonb,
+	meta jsonb NOT NULL DEFAULT '{}'::jsonb,
 	created timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-	allowed_grant_types jsonb DEFAULT '[]'::jsonb,
-	allowed_response_types jsonb DEFAULT '[]'::jsonb,
-	allowed_scopes jsonb DEFAULT '[]'::jsonb,
 	PRIMARY KEY (id)
 );
 
 CREATE TABLE IF NOT EXISTS oauth.access
 (
 	id serial,
-	client varchar(120) NOT NULL,
+	client_id varchar(120) NOT NULL, -- client.code
 	authorize_code varchar(140) NOT NULL,
 	access_token varchar(240) NOT NULL UNIQUE,
 	refresh_token varchar(240) NOT NULL DEFAULT '',
@@ -34,8 +31,9 @@ CREATE TABLE IF NOT EXISTS oauth.access
 	PRIMARY KEY (id)
 );
 
-CREATE TABLE IF NOT EXISTS oauth.refresh(
-	token varchar(240) NOT NULL,
+CREATE TABLE IF NOT EXISTS oauth.refresh
+(
+	token varchar(240) NOT NULL UNIQUE,
 	access varchar(240) NOT NULL ,
 	created timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	PRIMARY KEY (token)
@@ -45,7 +43,7 @@ CREATE TABLE IF NOT EXISTS oauth.authorize
 (
 	id serial,
 	code varchar(140) NOT NULL,
-	client varchar(120) NOT NULL,
+	client_id varchar(120) NOT NULL, -- client.code
 	redirect_uri varchar(255) NOT NULL DEFAULT '',
 	expires_in int NOT NULL DEFAULT 86400,
 	scopes varchar(255) NOT NULL DEFAULT '',
@@ -53,6 +51,16 @@ CREATE TABLE IF NOT EXISTS oauth.authorize
 	extra jsonb NOT NULL DEFAULT '{}'::jsonb,
 	created timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	UNIQUE (code),
+	PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS oauth.client_user_authorized
+(
+	id serial,
+	client_id varchar(120) NOT NULL, -- client.code
+	username varchar(120) NOT NULL DEFAULT '',
+	created timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	UNIQUE (client_id, username),
 	PRIMARY KEY (id)
 );
 

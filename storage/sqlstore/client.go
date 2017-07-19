@@ -1,4 +1,4 @@
-package pg
+package sqlstore
 
 import (
 	"fmt"
@@ -8,48 +8,31 @@ import (
 	"github.com/liut/osin-storage/storage"
 )
 
-var _ = fmt.Sprintf
 var _ storage.Client = (*Client)(nil)
-
-type JsonKV map[string]interface{}
-
-func ToJsonKV(src interface{}) (JsonKV, error) {
-	switch s := src.(type) {
-	case JsonKV:
-		return s, nil
-	case map[string]interface{}:
-		return JsonKV(s), nil
+var (
+	defaultGrantTypes    = []string{"authorization_code", "password", "refresh_token"}
+	defaultResponseTypes = []string{}
+	defaultScopes        = []string{"basic"}
+	defaultClientMeta    = ClientMeta{
+		Name:          "",
+		GrantTypes:    defaultGrantTypes,
+		ResponseTypes: defaultResponseTypes,
+		Scopes:        defaultScopes,
 	}
-	return nil, errInvalidJson
-}
-
-func (m JsonKV) WithKey(key string) (v interface{}) {
-	var ok bool
-	if v, ok = m[key]; ok {
-		return
-	}
-	return
-}
-
-type ClientMeta struct {
-	Site uint8  `json:"site_id"`
-	Name string `json:"name"`
-}
+)
 
 type Client struct {
-	TableName struct{} `sql:"oauth.client" json:"-"`
-
-	Id          int        `sql:"id,pk" json:"id"`
-	Code        string     `sql:"code,unique" json:"code"`
-	Secret      string     `sql:"secret,notnull" json:"-"`
+	Id          int        `sql:"id" json:"_id,omitempty"`
+	Code        string     `sql:"code" json:"code"` // unique
+	Secret      string     `sql:"secret" json:"-"`
 	RedirectUri string     `sql:"redirect_uri" json:"redirect_uri"`
-	Meta        ClientMeta `sql:"meta" json:"meta,omitempty"`
+	Meta        ClientMeta `sql:"meta" json:"meta,omitempty"` // UserMeta
 	CreatedAt   time.Time  `sql:"created" json:"created,omitempty"`
 }
 
-// func (c *Client) String() string {
-// 	return fmt.Sprintf("<oauth:Client code=%s>", c.Code)
-// }
+func (c *Client) String() string {
+	return fmt.Sprintf("<oauth:Client id=\"%d\" code=%q redirect_uri=%q />", c.Id, c.Code, c.RedirectUri)
+}
 
 func (c *Client) GetName() string {
 	return c.Meta.Name
@@ -90,7 +73,7 @@ func NewClient(code, secret, redirectUri string) (c *Client) {
 		Secret:      secret,
 		RedirectUri: redirectUri,
 		CreatedAt:   time.Now(),
-		Meta:        ClientMeta{Name: ""},
+		Meta:        defaultClientMeta,
 	}
 	return
 }

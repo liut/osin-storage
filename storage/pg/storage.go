@@ -60,34 +60,32 @@ func (s *Storage) GetClient(id string) (osin.Client, error) {
 	return c, err
 }
 
-// UpdateClient updates the client (identified by it's id) and replaces the values with the values of client.
-func (s *Storage) UpdateClient(c storage.Client) (err error) {
-	_c := NewClient(c.GetId(), c.GetSecret(), c.GetRedirectUri())
-	data := c.GetUserData()
-	if extra, ok := data.(ClientMeta); ok {
-		_c.UserData = extra
-	}
-	_, err = s.db.Model(_c).
-		Column("secret", "redirect_uri", "userdata").
-		Where("code = ?", c.GetId()).
-		Returning("*").
-		Update()
-
-	return
-}
-
-// CreateClient stores the client in the database and returns an error, if something went wrong.
-func (s *Storage) CreateClient(c storage.Client) (err error) {
+// SaveClient stores the client in the database and returns an error, if something went wrong.
+func (s *Storage) SaveClient(c storage.Client) (err error) {
 	_c := NewClient(c.GetId(), c.GetSecret(), c.GetRedirectUri())
 	if _c.GetId() == "" {
 		return errNilClient
 	}
 	data := c.GetUserData()
 	if extra, ok := data.(ClientMeta); ok {
-		_c.UserData = extra
+		_c.Meta = extra
 	}
+	err = s.db.RunInTransaction(func(tx *pg.Tx) (err error) {
+		var id int
+		_, err = tx.QueryOne(orm.Scan(&id), "SELECT id FROM oauth.client WHERE code = ?", _c.Code)
+		if err == nil {
+			_c.Id = id
+			_, err = tx.Model(_c).
+				Column("secret", "redirect_uri", "meta").
+				Where("code = ?", c.GetId()).
+				Returning("*").
+				Update()
+		} else {
+			err = tx.Insert(_c)
+		}
+		return
+	})
 
-	err = s.db.Insert(_c)
 	return
 }
 
@@ -109,7 +107,7 @@ func (s *Storage) SaveAuthorize(data *osin.AuthorizeData) (err error) {
 	}
 
 	_, err = s.db.Exec(
-		"INSERT INTO oauth.authorize (client, code, expires_in, scopes, redirect_uri, state, created, extra) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+		"INSERT INTO oauth.authorize (client_id, code, expires_in, scopes, redirect_uri, state, created, extra) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
 		data.Client.GetId(),
 		data.Code,
 		data.ExpiresIn,
@@ -133,7 +131,7 @@ func (s *Storage) LoadAuthorize(code string) (*osin.AuthorizeData, error) {
 	var extra JsonKV
 	var cid string
 	scan := orm.Scan(&cid, &data.Code, &data.ExpiresIn, &data.Scope, &data.RedirectUri, &data.State, &data.CreatedAt, &extra)
-	_, err := s.db.QueryOne(scan, "SELECT client, code, expires_in, scopes, redirect_uri, state, created, extra FROM oauth.authorize WHERE code=? LIMIT 1", code)
+	_, err := s.db.QueryOne(scan, "SELECT client_id, code, expires_in, scopes, redirect_uri, state, created, extra FROM oauth.authorize WHERE code=? LIMIT 1", code)
 	if err == pg.ErrNoRows {
 		return nil, errNotFound
 	} else if err != nil {
@@ -202,7 +200,8 @@ func (s *Storage) SaveAccess(data *osin.AccessData) (err error) {
 			return errNilClient
 		}
 
-		_, err = tx.Exec("INSERT INTO oauth.access (client, authorize_code, previous, access_token, refresh_token, expires_in, scopes, redirect_uri, created, extra) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", data.Client.GetId(), authorizeData.Code, prev, data.AccessToken, data.RefreshToken, data.ExpiresIn, data.Scope, data.RedirectUri, data.CreatedAt, extra)
+		_, err = tx.Exec("INSERT INTO oauth.access (client_id, authorize_code, previous, access_token, refresh_token, expires_in, scopes, redirect_uri, created, extra) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+			data.Client.GetId(), authorizeData.Code, prev, data.AccessToken, data.RefreshToken, data.ExpiresIn, data.Scope, data.RedirectUri, data.CreatedAt, extra)
 		if err != nil {
 			log.Printf("insert error %s", err)
 			return err
@@ -235,7 +234,7 @@ func (s *Storage) LoadAccess(code string) (*osin.AccessData, error) {
 		&extra,
 	)
 	_, err := s.db.QueryOne(sc,
-		"SELECT client, authorize_code, previous, access_token, refresh_token, expires_in, scopes, redirect_uri, created, extra FROM oauth.access WHERE access_token=? LIMIT 1",
+		"SELECT client_id, authorize_code, previous, access_token, refresh_token, expires_in, scopes, redirect_uri, created, extra FROM oauth.access WHERE access_token=? LIMIT 1",
 		code,
 	)
 	if err == pg.ErrNoRows {

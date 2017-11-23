@@ -13,20 +13,26 @@ import (
 	"github.com/liut/osin-storage/storage"
 )
 
-var _ storage.Storage = (*Storage)(nil)
+var _ storage.Storage = (*dbStore)(nil)
+
+type Storage interface {
+	storage.Storage
+	AllClients() ([]Client, error)
+	CreateSchemas() error
+}
 
 // Storage implements interface "github.com/RangelReale/osin".Storage and interface "github.com/ory-am/osin-storage".Storage
-type Storage struct {
+type dbStore struct {
 	db *pg.DB
 }
 
 // New returns a new postgres storage instance.
-func New(db *pg.DB) *Storage {
-	return &Storage{db}
+func New(db *pg.DB) *dbStore {
+	return &dbStore{db}
 }
 
 // CreateSchemas creates the schemata, if they do not exist yet in the database. Returns an error if something went wrong.
-func (s *Storage) CreateSchemas() error {
+func (s *dbStore) CreateSchemas() error {
 	for k, schema := range schemas {
 		if _, err := s.db.Exec(schema); err != nil {
 			log.Printf("Error creating schema %d: %s", k, schema)
@@ -40,16 +46,16 @@ func (s *Storage) CreateSchemas() error {
 // to avoid concurrent access problems.
 // This is to avoid cloning the connection at each method access.
 // Can return itself if not a problem.
-func (s *Storage) Clone() osin.Storage {
+func (s *dbStore) Clone() osin.Storage {
 	return s
 }
 
 // Close the resources the Storage potentially holds (using Clone for example)
-func (s *Storage) Close() {
+func (s *dbStore) Close() {
 }
 
 // GetClient loads the client by id
-func (s *Storage) GetClient(id string) (osin.Client, error) {
+func (s *dbStore) GetClient(id string) (osin.Client, error) {
 	var c = new(Client)
 	err := s.db.Model(c).Where("code = ?", id).Select()
 	if err == pg.ErrNoRows {
@@ -61,7 +67,7 @@ func (s *Storage) GetClient(id string) (osin.Client, error) {
 }
 
 // SaveClient stores the client in the database and returns an error, if something went wrong.
-func (s *Storage) SaveClient(c storage.Client) (err error) {
+func (s *dbStore) SaveClient(c storage.Client) (err error) {
 	_c := NewClient(c.GetId(), c.GetSecret(), c.GetRedirectUri())
 	if _c.GetId() == "" {
 		return errNilClient
@@ -90,14 +96,14 @@ func (s *Storage) SaveClient(c storage.Client) (err error) {
 }
 
 // RemoveClient removes a client (identified by id) from the database. Returns an error if something went wrong.
-func (s *Storage) RemoveClient(code string) (err error) {
+func (s *dbStore) RemoveClient(code string) (err error) {
 	var c Client
 	_, err = s.db.Model(&c).Where("code = ?", code).Delete()
 	return
 }
 
 // SaveAuthorize saves authorize data.
-func (s *Storage) SaveAuthorize(data *osin.AuthorizeData) (err error) {
+func (s *dbStore) SaveAuthorize(data *osin.AuthorizeData) (err error) {
 	if _, err = ToJsonKV(data.UserData); err != nil {
 		log.Printf("authorized.userdata %+v", data.UserData)
 		return
@@ -126,7 +132,7 @@ func (s *Storage) SaveAuthorize(data *osin.AuthorizeData) (err error) {
 // LoadAuthorize looks up AuthorizeData by a code.
 // Client information MUST be loaded together.
 // Optionally can return error if expired.
-func (s *Storage) LoadAuthorize(code string) (*osin.AuthorizeData, error) {
+func (s *dbStore) LoadAuthorize(code string) (*osin.AuthorizeData, error) {
 	var data osin.AuthorizeData
 	var extra JsonKV
 	var cid string
@@ -154,14 +160,14 @@ func (s *Storage) LoadAuthorize(code string) (*osin.AuthorizeData, error) {
 }
 
 // RemoveAuthorize revokes or deletes the authorization code.
-func (s *Storage) RemoveAuthorize(code string) (err error) {
+func (s *dbStore) RemoveAuthorize(code string) (err error) {
 	_, err = s.db.Exec("DELETE FROM oauth.authorize WHERE code=?", code)
 	return nil
 }
 
 // SaveAccess writes AccessData.
 // If RefreshToken is not blank, it must save in a way that can be loaded using LoadRefresh.
-func (s *Storage) SaveAccess(data *osin.AccessData) (err error) {
+func (s *dbStore) SaveAccess(data *osin.AccessData) (err error) {
 	_, err = s.LoadAccess(data.AccessToken)
 	if err == nil {
 		return nil
@@ -216,7 +222,7 @@ func (s *Storage) SaveAccess(data *osin.AccessData) (err error) {
 // LoadAccess retrieves access data by token. Client information MUST be loaded together.
 // AuthorizeData and AccessData DON'T NEED to be loaded if not easily available.
 // Optionally can return error if expired.
-func (s *Storage) LoadAccess(code string) (*osin.AccessData, error) {
+func (s *dbStore) LoadAccess(code string) (*osin.AccessData, error) {
 	var cid, prevAccessToken, authorizeCode string
 	var result osin.AccessData
 	var extra JsonKV
@@ -257,7 +263,7 @@ func (s *Storage) LoadAccess(code string) (*osin.AccessData, error) {
 }
 
 // RemoveAccess revokes or deletes an AccessData.
-func (s *Storage) RemoveAccess(code string) (err error) {
+func (s *dbStore) RemoveAccess(code string) (err error) {
 	_, err = s.db.Exec("DELETE FROM oauth.access WHERE access_token=?", code)
 	return
 }
@@ -265,7 +271,7 @@ func (s *Storage) RemoveAccess(code string) (err error) {
 // LoadRefresh retrieves refresh AccessData. Client information MUST be loaded together.
 // AuthorizeData and AccessData DON'T NEED to be loaded if not easily available.
 // Optionally can return error if expired.
-func (s *Storage) LoadRefresh(code string) (*osin.AccessData, error) {
+func (s *dbStore) LoadRefresh(code string) (*osin.AccessData, error) {
 	var access string
 	_, err := s.db.QueryOne(orm.Scan(&access), "SELECT access FROM oauth.refresh WHERE token=? LIMIT 1", code)
 	if err == pg.ErrNoRows {
@@ -277,12 +283,17 @@ func (s *Storage) LoadRefresh(code string) (*osin.AccessData, error) {
 }
 
 // RemoveRefresh revokes or deletes refresh AccessData.
-func (s *Storage) RemoveRefresh(code string) error {
+func (s *dbStore) RemoveRefresh(code string) error {
 	_, err := s.db.Exec("DELETE FROM oauth.refresh WHERE token=?", code)
 	return err
 }
 
-func (s *Storage) saveRefresh(tx *pg.Tx, refresh, access string) (err error) {
+func (s *dbStore) saveRefresh(tx *pg.Tx, refresh, access string) (err error) {
 	_, err = tx.Exec("INSERT INTO oauth.refresh (token, access) VALUES (?, ?)", refresh, access)
+	return
+}
+
+func (s *dbStore) AllClients() (data []Client, err error) {
+	err = s.db.Model(&data).Select()
 	return
 }

@@ -37,7 +37,7 @@ type ClientMeta struct {
 }
 
 type Client struct {
-	TableName struct{} `sql:"oauth.client" json:"-"`
+	tableName struct{} `sql:"oauth.client" json:"-"`
 
 	Id          int        `sql:"id,pk" json:"id"`
 	Code        string     `sql:"code,unique" json:"code"`

@@ -19,7 +19,7 @@ import (
 
 var _ = fmt.Sprintf
 var db *pg.DB
-var store *Storage
+var store Storage
 var clientMetaEmpty = ClientMeta{}
 var userDataEmpty = JsonKV{}
 var userDataMock = JsonKV{"name": "foobar"}
@@ -65,6 +65,11 @@ func TestClientOperations(t *testing.T) {
 	update := &Client{Code: "1", Secret: "secret123", RedirectUri: "http://www.google.com/", Meta: clientMetaEmpty}
 	updateClient(t, store, update)
 	getClient(t, store, update)
+
+	data, err := store.AllClients()
+	assert.Nil(t, err)
+	assert.True(t, len(data) > 0)
+
 }
 
 func TestAuthorizeOperations(t *testing.T) {

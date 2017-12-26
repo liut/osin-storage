@@ -2,7 +2,10 @@ package sqlstore
 
 import (
 	"database/sql"
+	"fmt"
 	"log"
+	"net/url"
+	"strconv"
 	"time"
 
 	"github.com/RangelReale/osin"
@@ -16,7 +19,7 @@ var (
 
 type Storage interface {
 	storage.Storage
-	AllClients() ([]*Client, error)
+	AllClients(vals url.Values) ([]Client, int, error)
 	GetClientWithCode(code string) (*Client, error)
 	LoadScopes() (scopes []*Scope, err error)
 	IsAuthorized(client_id, username string) bool
@@ -253,12 +256,15 @@ func (s *DbStorage) GetClientWithCode(code string) (c *Client, err error) {
 	return
 }
 
-func (s *DbStorage) AllClients() (clients []*Client, err error) {
-
+func (s *DbStorage) AllClients(vals url.Values) (clients []Client, total int, err error) {
+	err = s.db.QueryRow("SELECT COUNT(id) FROM oauth.client").Scan(&total)
+	if err != nil || total == 0 {
+		return
+	}
 	str := `SELECT id, code, secret, redirect_uri, meta, created
 	   FROM oauth.client `
 
-	clients = make([]*Client, 0)
+	clients = make([]Client, 0)
 
 	rows, err := s.db.Query(str)
 	if err != nil {
@@ -273,7 +279,7 @@ func (s *DbStorage) AllClients() (clients []*Client, err error) {
 			log.Printf("rows scan error: %s", err)
 			continue
 		}
-		clients = append(clients, c)
+		clients = append(clients, *c)
 	}
 	err = rows.Err()
 
@@ -367,4 +373,51 @@ func (s *DbStorage) SaveAuthorized(client_id, username string) (err error) {
 	_, err = s.db.Exec("INSERT INTO oauth.client_user_authorized(client_id, username) VALUES($1, $2) ",
 		client_id, username)
 	return
+}
+
+func sqlPager(vals url.Values, defaultLimit int) (q string, err error) {
+	const maxLimit = 1000
+	const maxOffset = 1e6
+
+	limit, err := intParam(vals, "limit")
+	if err != nil {
+		return
+	}
+	if limit < 1 {
+		limit = defaultLimit
+	} else if limit > maxLimit {
+		err = fmt.Errorf("limit=%d is bigger than %d", limit, maxLimit)
+		return
+	}
+	if limit > 0 {
+		q = fmt.Sprintf(" LIMIT %d", limit)
+	}
+
+	page, err := intParam(vals, "page")
+	if err != nil {
+		return "", err
+	}
+	if page > 0 {
+		offset := (page - 1) * limit
+		if offset > maxOffset {
+			err = fmt.Errorf("offset=%d can't bigger than %d", offset, maxOffset)
+			return
+		}
+		q = fmt.Sprintf("%s OFFSET %d", offset)
+	}
+	return
+}
+
+func intParam(vals url.Values, key string) (int, error) {
+	values, ok := vals[key]
+	if !ok {
+		return 0, nil
+	}
+
+	value, err := strconv.Atoi(values[0])
+	if err != nil {
+		return 0, fmt.Errorf("param=%s value=%s is invalid: %s", key, values[0], err)
+	}
+
+	return value, nil
 }

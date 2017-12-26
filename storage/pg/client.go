@@ -5,11 +5,13 @@ import (
 	"log"
 	"time"
 
+	"github.com/RangelReale/osin"
 	"github.com/liut/osin-storage/storage"
 )
 
 var _ = fmt.Sprintf
 var _ storage.Client = (*Client)(nil)
+var _ osin.Client = (*Client)(nil)
 
 type JsonKV map[string]interface{}
 

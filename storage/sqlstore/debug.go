@@ -1,5 +1,5 @@
 package sqlstore
 
-import . "github.com/visionmedia/go-debug"
+import . "github.com/wealthworks/go-debug"
 
 var debug = Debug("osin:storage")

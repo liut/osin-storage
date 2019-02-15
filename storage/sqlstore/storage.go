@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/RangelReale/osin"
+	"github.com/openshift/osin"
 
 	"github.com/liut/osin-storage/storage"
 )

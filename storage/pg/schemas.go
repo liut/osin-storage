@@ -1,7 +1,7 @@
 package pg
 
 import (
-	"github.com/RangelReale/osin"
+	"github.com/openshift/osin"
 )
 
 type Access struct {

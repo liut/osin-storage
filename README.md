@@ -1,5 +1,5 @@
 # osin-storage
-A storage backend for [osin oauth2](https://github.com/RangelReale/osin) with:
+A storage backend for [osin oauth2](https://github.com/openshift/osin) with:
 
 * `storage/pg`: [go-pg](https://github.com/go-pg/pg).
 * `storage/sqlstore`: [pq](https://github.com/lib/pq) and [sqlx](https://github.com/jmoiron/sqlx)
@@ -28,7 +28,7 @@ import (
 
 	_ "github.com/lib/pq"
 	"github.com/liut/osin-storage/storage/sqlstore"
-	"github.com/RangelReale/osin"
+	"github.com/openshift/osin"
 )
 
 func main () {

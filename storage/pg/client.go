@@ -5,8 +5,8 @@ import (
 	"log"
 	"time"
 
-	"github.com/RangelReale/osin"
 	"github.com/liut/osin-storage/storage"
+	"github.com/openshift/osin"
 )
 
 var _ = fmt.Sprintf

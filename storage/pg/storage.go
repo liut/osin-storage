@@ -6,7 +6,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/RangelReale/osin"
+	"github.com/openshift/osin"
 	"gopkg.in/pg.v5"
 	"gopkg.in/pg.v5/orm"
 
@@ -21,7 +21,7 @@ type Storage interface {
 	CreateSchemas() error
 }
 
-// Storage implements interface "github.com/RangelReale/osin".Storage and interface "github.com/ory-am/osin-storage".Storage
+// Storage implements interface "github.com/openshift/osin".Storage and interface "github.com/ory-am/osin-storage".Storage
 type dbStore struct {
 	db *pg.DB
 }

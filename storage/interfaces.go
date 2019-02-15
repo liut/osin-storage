@@ -1,7 +1,7 @@
 // Package storage defines an interface, which all osin-storage implementations are going to support.
 package storage
 
-import "github.com/RangelReale/osin"
+import "github.com/openshift/osin"
 
 type Client interface {
 	osin.Client
@@ -13,7 +13,7 @@ type Client interface {
 	CopyFrom(Client)
 }
 
-// Storage extends github.com/RangelReale/osin.Storage with create, update and delete methods for clients.
+// Storage extends github.com/openshift/osin.Storage with create, update and delete methods for clients.
 type Storage interface {
 	osin.Storage
 

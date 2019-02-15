@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/RangelReale/osin"
+	"github.com/openshift/osin"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -32,7 +32,7 @@ func init() {
 func TestMain(m *testing.M) {
 	db = pg.Connect(&pg.Options{
 		User:     "sso",
-		Password: "sso",
+		Password: "Develop2017",
 		Addr:     "127.0.0.1:54320",
 		Database: "sso",
 	})

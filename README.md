@@ -2,7 +2,7 @@
 A storage backend for [osin oauth2](https://github.com/openshift/osin) with:
 
 * `storage/pg`: [go-pg](https://github.com/go-pg/pg).
-* `storage/sqlstore`: [pq](https://github.com/lib/pq) and [sqlx](https://github.com/jmoiron/sqlx)
+* `storage/sqlstore`: [pq](https://github.com/lib/pq) or [sqlx](https://github.com/jmoiron/sqlx)
 
 This project was inspired from [ory-am](https://github.com/ory-am/osin-storage)
 

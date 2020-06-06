@@ -8,11 +8,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-pg/pg"
 	"github.com/openshift/osin"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gopkg.in/pg.v5"
 
 	"github.com/liut/osin-storage/storage"
 )
@@ -21,8 +21,8 @@ var _ = fmt.Sprintf
 var db *pg.DB
 var store Storage
 var clientMetaEmpty = ClientMeta{}
-var userDataEmpty = JsonKV{}
-var userDataMock = JsonKV{"name": "foobar"}
+var userDataEmpty = JSONKV{}
+var userDataMock = JSONKV{"name": "foobar"}
 
 func init() {
 	log.SetFlags(log.Ltime | log.Lshortfile)
@@ -31,10 +31,10 @@ func init() {
 
 func TestMain(m *testing.M) {
 	db = pg.Connect(&pg.Options{
-		User:     "sso",
-		Password: "Develop2017",
-		Addr:     "127.0.0.1:54320",
-		Database: "sso",
+		User:     envOr("OSIN_TEST_USER", "sso"),
+		Password: envOr("OSIN_TEST_PASS", "Develop2017"),
+		Addr:     envOr("OSIN_TEST_ADDR", "localhost:5432"),
+		Database: envOr("OSIN_TEST_DB", "ssotest"),
 	})
 
 	store = New(db)
@@ -42,10 +42,10 @@ func TestMain(m *testing.M) {
 		log.Fatalf("Could not ping database: %v", err)
 	}
 
-	retCode := m.Run()
-
 	// force teardown
 	tearDown()
+
+	retCode := m.Run()
 
 	os.Exit(retCode)
 }
@@ -57,12 +57,20 @@ func tearDown() {
 	db.Exec("TRUNCATE TABLE oauth.refresh")
 }
 
+func envOr(key, dft string) string {
+	v := os.Getenv(key)
+	if v == "" {
+		return dft
+	}
+	return v
+}
+
 func TestClientOperations(t *testing.T) {
-	create := &Client{Code: "1", Secret: "secret", RedirectUri: "http://localhost/", Meta: clientMetaEmpty}
+	create := &Client{Code: "1", Secret: "secret", RedirectURI: "http://localhost/", Meta: clientMetaEmpty}
 	createClient(t, store, create)
 	getClient(t, store, create)
 
-	update := &Client{Code: "1", Secret: "secret123", RedirectUri: "http://www.google.com/", Meta: clientMetaEmpty}
+	update := &Client{Code: "1", Secret: "secret123", RedirectURI: "http://www.google.com/", Meta: clientMetaEmpty}
 	updateClient(t, store, update)
 	getClient(t, store, update)
 
@@ -214,7 +222,7 @@ func TestAccessOperations(t *testing.T) {
 }
 
 func TestRefreshOperations(t *testing.T) {
-	client := &Client{Code: "4", Secret: "secret", RedirectUri: "http://localhost/", Meta: clientMetaEmpty}
+	client := &Client{Code: "4", Secret: "secret", RedirectURI: "http://localhost/", Meta: clientMetaEmpty}
 	type test struct {
 		access *osin.AccessData
 	}

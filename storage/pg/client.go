@@ -13,19 +13,22 @@ var _ = fmt.Sprintf
 var _ storage.Client = (*Client)(nil)
 var _ osin.Client = (*Client)(nil)
 
-type JsonKV map[string]interface{}
+// JSONKV ..
+type JSONKV map[string]interface{}
 
-func ToJsonKV(src interface{}) (JsonKV, error) {
+// ToJSONKV ...
+func ToJSONKV(src interface{}) (JSONKV, error) {
 	switch s := src.(type) {
-	case JsonKV:
+	case JSONKV:
 		return s, nil
 	case map[string]interface{}:
-		return JsonKV(s), nil
+		return JSONKV(s), nil
 	}
 	return nil, errInvalidJson
 }
 
-func (m JsonKV) WithKey(key string) (v interface{}) {
+// WithKey ...
+func (m JSONKV) WithKey(key string) (v interface{}) {
 	var ok bool
 	if v, ok = m[key]; ok {
 		return
@@ -33,18 +36,20 @@ func (m JsonKV) WithKey(key string) (v interface{}) {
 	return
 }
 
+// ClientMeta ...
 type ClientMeta struct {
-	Site uint8  `json:"site_id"`
+	Site uint8  `json:"siteID"`
 	Name string `json:"name"`
 }
 
+// Client ...
 type Client struct {
-	tableName struct{} `sql:"oauth.client" json:"-"`
+	tableName struct{} `sql:"oauth.client"`
 
-	Id          int        `sql:"id,pk" json:"id"`
+	ID          int        `sql:"id,pk" json:"id"`
 	Code        string     `sql:"code,unique" json:"code"`
 	Secret      string     `sql:"secret,notnull" json:"-"`
-	RedirectUri string     `sql:"redirect_uri" json:"redirect_uri"`
+	RedirectURI string     `sql:"redirect_uri" json:"redirect_uri"`
 	Meta        ClientMeta `sql:"meta" json:"meta,omitempty"`
 	CreatedAt   time.Time  `sql:"created" json:"created,omitempty"`
 }
@@ -53,30 +58,36 @@ type Client struct {
 // 	return fmt.Sprintf("<oauth:Client code=%s>", c.Code)
 // }
 
+// GetName ...
 func (c *Client) GetName() string {
 	return c.Meta.Name
 }
 
-func (c *Client) GetId() string {
+// GetId osin.Client
+func (c *Client) GetId() string { // justifying
 	return c.Code
 }
 
+// GetSecret osin.Client
 func (c *Client) GetSecret() string {
 	return c.Secret
 }
 
+// GetRedirectUri osin.Client
 func (c *Client) GetRedirectUri() string {
-	return c.RedirectUri
+	return c.RedirectURI
 }
 
+// GetUserData osin.Client
 func (c *Client) GetUserData() interface{} {
 	return c.Meta
 }
 
+// CopyFrom ...
 func (c *Client) CopyFrom(other storage.Client) {
 	c.Code = other.GetId()
 	c.Secret = other.GetSecret()
-	c.RedirectUri = other.GetRedirectUri()
+	c.RedirectURI = other.GetRedirectUri()
 
 	data := other.GetUserData()
 	if extra, ok := data.(ClientMeta); ok {
@@ -86,11 +97,12 @@ func (c *Client) CopyFrom(other storage.Client) {
 	}
 }
 
-func NewClient(code, secret, redirectUri string) (c *Client) {
+// NewClient ...
+func NewClient(code, secret, uri string) (c *Client) {
 	c = &Client{
 		Code:        code,
 		Secret:      secret,
-		RedirectUri: redirectUri,
+		RedirectURI: uri,
 		CreatedAt:   time.Now(),
 		Meta:        ClientMeta{Name: ""},
 	}

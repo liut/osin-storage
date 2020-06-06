@@ -1,4 +1,4 @@
-// Package postgres is a osin storage implementation for postgres.
+// Package pg is a osin storage implementation for postgres.
 package pg
 
 import (
@@ -7,14 +7,13 @@ import (
 	"time"
 
 	"github.com/openshift/osin"
-	"gopkg.in/pg.v5"
-	"gopkg.in/pg.v5/orm"
 
 	"github.com/liut/osin-storage/storage"
 )
 
 var _ storage.Storage = (*dbStore)(nil)
 
+// Storage ...
 type Storage interface {
 	storage.Storage
 	AllClients() ([]Client, error)
@@ -23,11 +22,11 @@ type Storage interface {
 
 // Storage implements interface "github.com/openshift/osin".Storage and interface "github.com/ory-am/osin-storage".Storage
 type dbStore struct {
-	db *pg.DB
+	db *DB
 }
 
 // New returns a new postgres storage instance.
-func New(db *pg.DB) *dbStore {
+func New(db *DB) Storage {
 	return &dbStore{db}
 }
 
@@ -58,7 +57,7 @@ func (s *dbStore) Close() {
 func (s *dbStore) GetClient(id string) (osin.Client, error) {
 	var c = new(Client)
 	err := s.db.Model(c).Where("code = ?", id).Select()
-	if err == pg.ErrNoRows {
+	if err == dbErrNoRows {
 		return nil, errNotFound
 	} else if err != nil {
 		log.Printf("get client %s err: %s", id, err)
@@ -76,11 +75,11 @@ func (s *dbStore) SaveClient(c storage.Client) (err error) {
 	if extra, ok := data.(ClientMeta); ok {
 		_c.Meta = extra
 	}
-	err = s.db.RunInTransaction(func(tx *pg.Tx) (err error) {
+	err = s.db.RunInTransaction(func(tx *Tx) (err error) {
 		var id int
-		_, err = tx.QueryOne(orm.Scan(&id), "SELECT id FROM oauth.client WHERE code = ?", _c.Code)
+		_, err = tx.QueryOne(ormScan(&id), "SELECT id FROM oauth.client WHERE code = ?", _c.Code)
 		if err == nil {
-			_c.Id = id
+			_c.ID = id
 			_, err = tx.Model(_c).
 				Column("secret", "redirect_uri", "meta").
 				Where("code = ?", c.GetId()).
@@ -104,12 +103,12 @@ func (s *dbStore) RemoveClient(code string) (err error) {
 
 // SaveAuthorize saves authorize data.
 func (s *dbStore) SaveAuthorize(data *osin.AuthorizeData) (err error) {
-	if _, err = ToJsonKV(data.UserData); err != nil {
+	if _, err = ToJSONKV(data.UserData); err != nil {
 		log.Printf("authorized.userdata %+v", data.UserData)
 		return
 	}
 	if data.UserData == nil {
-		data.UserData = JsonKV{}
+		data.UserData = JSONKV{}
 	}
 
 	_, err = s.db.Exec(
@@ -134,11 +133,11 @@ func (s *dbStore) SaveAuthorize(data *osin.AuthorizeData) (err error) {
 // Optionally can return error if expired.
 func (s *dbStore) LoadAuthorize(code string) (*osin.AuthorizeData, error) {
 	var data osin.AuthorizeData
-	var extra JsonKV
+	var extra JSONKV
 	var cid string
-	scan := orm.Scan(&cid, &data.Code, &data.ExpiresIn, &data.Scope, &data.RedirectUri, &data.State, &data.CreatedAt, &extra)
+	scan := ormScan(&cid, &data.Code, &data.ExpiresIn, &data.Scope, &data.RedirectUri, &data.State, &data.CreatedAt, &extra)
 	_, err := s.db.QueryOne(scan, "SELECT client_id, code, expires_in, scopes, redirect_uri, state, created, extra FROM oauth.authorize WHERE code=? LIMIT 1", code)
-	if err == pg.ErrNoRows {
+	if err == dbErrNoRows {
 		return nil, errNotFound
 	} else if err != nil {
 		log.Printf("db error: %s", err)
@@ -186,14 +185,14 @@ func (s *dbStore) SaveAccess(data *osin.AccessData) (err error) {
 	}
 
 	var (
-		extra JsonKV
+		extra JSONKV
 	)
-	if extra, err = ToJsonKV(data.UserData); err != nil {
+	if extra, err = ToJSONKV(data.UserData); err != nil {
 		log.Printf("access.userdata %+v", data.UserData)
 		return
 	}
 
-	return s.db.RunInTransaction(func(tx *pg.Tx) (err error) {
+	return s.db.RunInTransaction(func(tx *Tx) (err error) {
 		if data.RefreshToken != "" {
 			if err = s.saveRefresh(tx, data.RefreshToken, data.AccessToken); err != nil {
 				log.Printf("save refresh error %s", err)
@@ -225,9 +224,9 @@ func (s *dbStore) SaveAccess(data *osin.AccessData) (err error) {
 func (s *dbStore) LoadAccess(code string) (*osin.AccessData, error) {
 	var cid, prevAccessToken, authorizeCode string
 	var result osin.AccessData
-	var extra JsonKV
+	var extra JSONKV
 
-	sc := orm.Scan(
+	sc := ormScan(
 		&cid,
 		&authorizeCode,
 		&prevAccessToken,
@@ -243,7 +242,7 @@ func (s *dbStore) LoadAccess(code string) (*osin.AccessData, error) {
 		"SELECT client_id, authorize_code, previous, access_token, refresh_token, expires_in, scopes, redirect_uri, created, extra FROM oauth.access WHERE access_token=? LIMIT 1",
 		code,
 	)
-	if err == pg.ErrNoRows {
+	if err == dbErrNoRows {
 		return nil, errNotFound
 	} else if err != nil {
 		return nil, errDatabase
@@ -273,8 +272,8 @@ func (s *dbStore) RemoveAccess(code string) (err error) {
 // Optionally can return error if expired.
 func (s *dbStore) LoadRefresh(code string) (*osin.AccessData, error) {
 	var access string
-	_, err := s.db.QueryOne(orm.Scan(&access), "SELECT access FROM oauth.refresh WHERE token=? LIMIT 1", code)
-	if err == pg.ErrNoRows {
+	_, err := s.db.QueryOne(ormScan(&access), "SELECT access FROM oauth.refresh WHERE token=? LIMIT 1", code)
+	if err == dbErrNoRows {
 		return nil, errNotFound
 	} else if err != nil {
 		return nil, err
@@ -288,7 +287,7 @@ func (s *dbStore) RemoveRefresh(code string) error {
 	return err
 }
 
-func (s *dbStore) saveRefresh(tx *pg.Tx, refresh, access string) (err error) {
+func (s *dbStore) saveRefresh(tx *Tx, refresh, access string) (err error) {
 	_, err = tx.Exec("INSERT INTO oauth.refresh (token, access) VALUES (?, ?)", refresh, access)
 	return
 }

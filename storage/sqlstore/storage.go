@@ -286,7 +286,7 @@ func (s *DbStorage) AllClients(vals url.Values) (clients []Client, total int, er
 	return
 }
 
-// CreateClient stores the client in the database and returns an error, if something went wrong.
+// SaveClient stores the client in the database and returns an error, if something went wrong.
 func (s *DbStorage) SaveClient(client storage.Client) error {
 	c := new(Client)
 	c.CopyFrom(client)

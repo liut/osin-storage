@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	_ "github.com/lib/pq"
+	_ "github.com/lib/pq" // testing justifying
 
 	"github.com/openshift/osin"
 	"github.com/pborman/uuid"

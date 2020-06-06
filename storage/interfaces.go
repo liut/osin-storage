@@ -3,6 +3,7 @@ package storage
 
 import "github.com/openshift/osin"
 
+// Client ...
 type Client interface {
 	osin.Client
 

@@ -5,7 +5,7 @@ import (
 )
 
 type Access struct {
-	tableName struct{} `sql:"oauth.access" json:"-"`
+	tableName struct{} `sql:"oauth.access" `
 
 	Id int `sql:"id,pk" json:"id"`
 

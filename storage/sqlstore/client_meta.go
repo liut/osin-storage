@@ -45,7 +45,7 @@ func (m JsonKV) Value() (driver.Value, error) {
 	return json.Marshal(m)
 }
 
-// ClientMeta
+// ClientMeta ...
 type ClientMeta struct {
 	Name          string   `json:"name"`
 	GrantTypes    []string `json:"grant_types,omitempty"`    // AllowedGrantTypes

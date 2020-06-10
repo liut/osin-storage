@@ -11,6 +11,7 @@ import (
 	"github.com/openshift/osin"
 
 	"github.com/liut/osin-storage/storage"
+	"github.com/liut/osin-storage/storage/oauth"
 )
 
 var (
@@ -54,12 +55,12 @@ func (s *DbStorage) GetClient(id string) (c osin.Client, err error) {
 }
 
 func (s *DbStorage) SaveAuthorize(data *osin.AuthorizeData) error {
-	if _, err := ToJsonKV(data.UserData); err != nil {
+	if _, err := oauth.ToJSONKV(data.UserData); err != nil {
 		log.Printf("SaveAuthorize userdata %+v, ERR %s", data.UserData, err)
 		return err
 	}
 	if data.UserData == nil {
-		data.UserData = JsonKV{}
+		data.UserData = JSONKV{}
 	}
 
 	r, err := s.db.Exec(`INSERT INTO oauth.authorize(code, client_id, extra, redirect_uri, expires_in, scopes, created)
@@ -76,7 +77,7 @@ func (s *DbStorage) SaveAuthorize(data *osin.AuthorizeData) error {
 func (s *DbStorage) LoadAuthorize(code string) (a *osin.AuthorizeData, err error) {
 	var (
 		client_id string
-		extra     JsonKV
+		extra     JSONKV
 	)
 	a = &osin.AuthorizeData{Code: code}
 	err = s.db.QueryRow(`SELECT client_id, extra, redirect_uri, expires_in, scopes, created
@@ -138,9 +139,9 @@ func (s *DbStorage) SaveAccess(data *osin.AccessData) (err error) {
 	}
 
 	var (
-		extra JsonKV
+		extra JSONKV
 	)
-	if extra, err = ToJsonKV(data.UserData); err != nil {
+	if extra, err = oauth.ToJSONKV(data.UserData); err != nil {
 		log.Printf("access.userdata %+v", data.UserData)
 		return
 	}
@@ -170,7 +171,7 @@ func (s *DbStorage) SaveAccess(data *osin.AccessData) (err error) {
 func (s *DbStorage) LoadAccess(code string) (a *osin.AccessData, err error) {
 	var (
 		cid, authorizeCode, prevAccessToken string
-		extra                               JsonKV
+		extra                               JSONKV
 		is_frozen                           bool
 		id                                  int
 	)
@@ -245,8 +246,8 @@ func (s *DbStorage) RemoveRefresh(code string) error {
 
 func (s *DbStorage) GetClientWithCode(code string) (c *Client, err error) {
 	c = new(Client)
-	err = s.db.QueryRow("SELECT id, code, secret, redirect_uri, meta, created FROM oauth.client WHERE code = $1",
-		code).Scan(&c.Id, &c.Code, &c.Secret, &c.RedirectUri, &c.Meta, &c.CreatedAt)
+	err = s.db.QueryRow("SELECT id, secret, redirect_uri, meta, created FROM oauth.client WHERE id = $1",
+		code).Scan(&c.ID, &c.Secret, &c.RedirectURI, &c.Meta, &c.CreatedAt)
 	if err == sql.ErrNoRows {
 		log.Printf("GetClientWithCode '%s', ERR %s", code, err)
 		err = ErrNotFound
@@ -261,7 +262,7 @@ func (s *DbStorage) AllClients(vals url.Values) (clients []Client, total int, er
 	if err != nil || total == 0 {
 		return
 	}
-	str := `SELECT id, code, secret, redirect_uri, meta, created
+	str := `SELECT id, secret, redirect_uri, meta, created
 	   FROM oauth.client `
 
 	clients = make([]Client, 0)
@@ -274,7 +275,7 @@ func (s *DbStorage) AllClients(vals url.Values) (clients []Client, total int, er
 	defer rows.Close()
 	for rows.Next() {
 		c := new(Client)
-		err = rows.Scan(&c.Id, &c.Code, &c.Secret, &c.RedirectUri, &c.Meta, &c.CreatedAt)
+		err = rows.Scan(&c.ID, &c.Secret, &c.RedirectURI, &c.Meta, &c.CreatedAt)
 		if err != nil {
 			log.Printf("rows scan error: %s", err)
 			continue
@@ -290,35 +291,32 @@ func (s *DbStorage) AllClients(vals url.Values) (clients []Client, total int, er
 func (s *DbStorage) SaveClient(client storage.Client) error {
 	c := new(Client)
 	c.CopyFrom(client)
-	if c.Code == "" || c.Secret == "" || c.RedirectUri == "" {
+	if c.ID == "" || c.Secret == "" || c.RedirectURI == "" {
 		return valueError
 	}
 
 	qs := func(tx DBTxer) (err error) {
-		var id int
-		err = tx.QueryRow("SELECT id FROM oauth.client WHERE code = $1", c.Code).Scan(&id)
+		var created time.Time
+		err = tx.QueryRow("SELECT created FROM oauth.client WHERE id = $1", c.ID).Scan(&created)
 		if err != nil && err != sql.ErrNoRows {
-			log.Printf("query client %s ERR %s", c.Code, err)
+			log.Printf("query client %s ERR %s", c.ID, err)
 			return
 		}
-		if id > 0 {
-			str := `UPDATE oauth.client SET meta = $1, code = $2, secret = $3, redirect_uri = $4
-			 WHERE id = $5`
+		if !created.IsZero() {
+			str := `UPDATE oauth.client SET meta = $1, secret = $2, redirect_uri = $3
+			 WHERE id = $4`
 			var r sql.Result
-			r, err = tx.Exec(str, c.Meta, c.Code, c.Secret, c.RedirectUri, id)
+			r, err = tx.Exec(str, c.Meta, c.Secret, c.RedirectURI, c.ID)
 			log.Printf("UPDATE client result: %v", r)
 		} else {
 			str := `INSERT INTO
-		 oauth.client(meta, code, secret, redirect_uri)
-		 VALUES($1, $2, $3, $4) RETURNING id;`
+		 oauth.client(id, meta, secret, redirect_uri)
+		 VALUES($1, $2, $3, $4) RETURNING created;`
 			err = tx.QueryRow(str,
+				c.ID,
 				c.Meta,
-				c.Code,
 				c.Secret,
-				c.RedirectUri).Scan(&id)
-			if err == nil {
-				c.Id = id
-			}
+				c.RedirectURI).Scan(&created)
 			debug("save new client %s", c)
 		}
 		return err
@@ -327,8 +325,8 @@ func (s *DbStorage) SaveClient(client storage.Client) error {
 }
 
 // RemoveClient removes a client (identified by id) from the database. Returns an error if something went wrong.
-func (s *DbStorage) RemoveClient(code string) (err error) {
-	_, err = s.db.Exec("DELETE FROM oauth.client WHERE code = $1", code)
+func (s *DbStorage) RemoveClient(id string) (err error) {
+	_, err = s.db.Exec("DELETE FROM oauth.client WHERE id = $1", id)
 	return
 }
 
@@ -400,10 +398,10 @@ func sqlPager(vals url.Values, defaultLimit int) (q string, err error) {
 	if page > 0 {
 		offset := (page - 1) * limit
 		if offset > maxOffset {
-			err = fmt.Errorf("offset=%d can't bigger than %d", offset, maxOffset)
+			err = fmt.Errorf("offset=%v can't bigger than %v", offset, maxOffset)
 			return
 		}
-		q = fmt.Sprintf("%s OFFSET %d", offset)
+		q = fmt.Sprintf("%s OFFSET %d", q, offset)
 	}
 	return
 }
@@ -416,7 +414,7 @@ func intParam(vals url.Values, key string) (int, error) {
 
 	value, err := strconv.Atoi(values[0])
 	if err != nil {
-		return 0, fmt.Errorf("param=%s value=%s is invalid: %s", key, values[0], err)
+		return 0, fmt.Errorf("param=%s value=%v is invalid: %s", key, values[0], err)
 	}
 
 	return value, nil

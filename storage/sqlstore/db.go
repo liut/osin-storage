@@ -3,6 +3,7 @@ package sqlstore
 import (
 	"database/sql"
 	"log"
+	"os"
 )
 
 type Queryer interface {
@@ -33,4 +34,12 @@ func (s *DbStorage) withTxQuery(query func(tx DBTxer) error) error {
 	tx.Rollback()
 	log.Printf("tx query ERR: %s", err)
 	return err
+}
+
+func envOr(key, dft string) string {
+	v := os.Getenv(key)
+	if v == "" {
+		return dft
+	}
+	return v
 }

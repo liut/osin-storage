@@ -3,8 +3,10 @@ package sqlstore
 import (
 	"database/sql"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -22,57 +24,75 @@ var _ = fmt.Sprintf
 var db *sql.DB
 var store Storage
 var clientMetaEmpty = ClientMeta{}
-var userDataEmpty = JsonKV{}
-var userDataMock = JsonKV{"name": "foobar"}
+var userDataEmpty = JSONKV{}
+var userDataMock = JSONKV{"name": "foobar"}
 
 func init() {
 	log.SetFlags(log.Ltime | log.Lshortfile)
 }
 
 func TestMain(m *testing.M) {
-	dsn := os.Getenv("PGSTORE_TEST_DSN")
-	if dsn == "" {
-		log.Fatal("This test requires a real database.")
-	}
+	dsn := envOr("PGSTORE_TEST_DSN", "postgres://sso:Develop2017@localhost:5432/ssotest?sslmode=disable")
 	db, err := sql.Open("postgres", dsn)
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	db.Exec("DROP SCHEMA IF EXISTS oauth CASCADE;")
+
+	schemas := []string{
+		"oauth_schema.sql",
+	}
+	for _, fn := range schemas {
+		if _e := execSQLfile(db, "../database/"+fn); _e != nil {
+			log.Fatal(_e)
+		}
+	}
 	store = New(db)
 
 	retCode := m.Run()
 
-	// force teardown
-	tearDown(db)
-
 	os.Exit(retCode)
 }
 
-func tearDown(db DBer) {
-	log.Print("clean test data")
-	db.Exec("TRUNCATE TABLE oauth.authorize")
-	db.Exec("TRUNCATE TABLE oauth.access")
-	db.Exec("DELETE FROM oauth.client WHERE code in ('1', '3', 'dupe')")
-	db.Exec("TRUNCATE TABLE oauth.refresh")
+func loadSQLs(name string) string {
+	content, err := ioutil.ReadFile(name)
+	if err != nil {
+		log.Fatal("loadSQL fail", "err", err)
+	}
+	return string(content)
+}
+
+func execSQLfile(db DBer, name string) error {
+	query := strings.TrimSpace(loadSQLs(name))
+	if query == "" {
+		return nil
+	}
+	_, err := db.Exec(query)
+	if err != nil {
+		log.Print("exec sql fail", "name", name, "query", query[:32], "err", err)
+		return err
+	}
+	return nil
 }
 
 func TestClientOperations(t *testing.T) {
-	create := &Client{Code: "1", Secret: "secret", RedirectUri: "http://localhost/", Meta: clientMetaEmpty}
+	create := &Client{ID: "1", Secret: "secret", RedirectURI: "http://localhost/", Meta: clientMetaEmpty}
 	createClient(t, store, create)
 	compareClient(t, store, create)
 
-	update := &Client{Code: "1", Secret: "secret123", RedirectUri: "http://www.google.com/", Meta: clientMetaEmpty}
+	update := &Client{ID: "1", Secret: "secret123", RedirectURI: "http://www.google.com/", Meta: clientMetaEmpty}
 	updateClient(t, store, update)
 	compareClient(t, store, update)
 
-	clients, err := store.AllClients()
+	clients, total, err := store.AllClients(nil)
 	require.Nil(t, err)
+	require.NotZero(t, total)
 	require.NotZero(t, len(clients))
 }
 
 func TestAuthorizeOperations(t *testing.T) {
-	// client := &Client{Code: "2", Secret: "secret", RedirectUri: "http://localhost/", Meta: userDataEmpty}
+	// client := &Client{Code: "2", Secret: "secret", RedirectURI: "http://localhost/", Meta: userDataEmpty}
 	client := NewClient("2", "secret", "http://localhost/")
 	client.Meta = clientMetaEmpty
 	createClient(t, store, client)
@@ -213,7 +233,7 @@ func TestAccessOperations(t *testing.T) {
 }
 
 func TestRefreshOperations(t *testing.T) {
-	client := &Client{Code: "4", Secret: "secret", RedirectUri: "http://localhost/", Meta: clientMetaEmpty}
+	client := &Client{ID: "4", Secret: "secret", RedirectURI: "http://localhost/", Meta: clientMetaEmpty}
 	type test struct {
 		access *osin.AccessData
 	}
@@ -274,10 +294,10 @@ func TestRefreshOperations(t *testing.T) {
 }
 
 func TestErrors(t *testing.T) {
-	client := &Client{Code: "dupe", Secret: "secret", Meta: clientMetaEmpty, RedirectUri: "http://localhost"}
+	client := &Client{ID: "dupe", Secret: "secret", Meta: clientMetaEmpty, RedirectURI: "http://localhost"}
 	assert.Nil(t, store.SaveClient(client))
 	assert.Nil(t, store.SaveClient(client))
-	assert.NotNil(t, store.SaveClient(&Client{Code: "", Meta: clientMetaEmpty}))
+	assert.NotNil(t, store.SaveClient(&Client{ID: "", Meta: clientMetaEmpty}))
 	assert.NotNil(t, store.SaveAccess(&osin.AccessData{AccessToken: "", AccessData: &osin.AccessData{}, AuthorizeData: &osin.AuthorizeData{}}))
 	assert.Nil(t, store.SaveAuthorize(&osin.AuthorizeData{Code: "a", Client: client, UserData: userDataMock}))
 	assert.NotNil(t, store.SaveAuthorize(&osin.AuthorizeData{Code: "a", Client: client}))

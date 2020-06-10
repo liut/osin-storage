@@ -56,7 +56,7 @@ func (s *dbStore) Close() {
 // GetClient loads the client by id
 func (s *dbStore) GetClient(id string) (osin.Client, error) {
 	var c = new(Client)
-	err := s.db.Model(c).Where("code = ?", id).Select()
+	err := s.db.Model(c).Where("id = ?", id).Select()
 	if err == dbErrNoRows {
 		return nil, errNotFound
 	} else if err != nil {
@@ -76,13 +76,12 @@ func (s *dbStore) SaveClient(c storage.Client) (err error) {
 		_c.Meta = extra
 	}
 	err = s.db.RunInTransaction(func(tx *Tx) (err error) {
-		var id int
-		_, err = tx.QueryOne(ormScan(&id), "SELECT id FROM oauth.client WHERE code = ?", _c.Code)
+		var created time.Time
+		_, err = tx.QueryOne(ormScan(&created), "SELECT created FROM oauth.client WHERE id = ?", _c.ID)
 		if err == nil {
-			_c.ID = id
 			_, err = tx.Model(_c).
 				Column("secret", "redirect_uri", "meta").
-				Where("code = ?", c.GetId()).
+				Where("id = ?", c.GetId()).
 				Returning("*").
 				Update()
 		} else {
@@ -97,7 +96,7 @@ func (s *dbStore) SaveClient(c storage.Client) (err error) {
 // RemoveClient removes a client (identified by id) from the database. Returns an error if something went wrong.
 func (s *dbStore) RemoveClient(code string) (err error) {
 	var c Client
-	_, err = s.db.Model(&c).Where("code = ?", code).Delete()
+	_, err = s.db.Model(&c).Where("id = ?", code).Delete()
 	return
 }
 

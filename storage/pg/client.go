@@ -46,17 +46,16 @@ type ClientMeta struct {
 type Client struct {
 	tableName struct{} `sql:"oauth.client"`
 
-	ID          int        `sql:"id,pk" json:"id"`
-	Code        string     `sql:"code,unique" json:"code"`
+	ID          string     `sql:"id,pk" json:"id"`
 	Secret      string     `sql:"secret,notnull" json:"-"`
-	RedirectURI string     `sql:"redirect_uri" json:"redirect_uri"`
-	Meta        ClientMeta `sql:"meta" json:"meta,omitempty"`
-	CreatedAt   time.Time  `sql:"created" json:"created,omitempty"`
+	RedirectURI string     `sql:"redirect_uri,notnull" json:"redirect_uri"`
+	Meta        ClientMeta `sql:"meta,notnull" json:"meta,omitempty"`
+	CreatedAt   time.Time  `sql:"created,notnull" json:"created,omitempty"`
 }
 
-// func (c *Client) String() string {
-// 	return fmt.Sprintf("<oauth:Client code=%s>", c.Code)
-// }
+func (c *Client) String() string {
+	return fmt.Sprintf("<oauth:Client ID=%s>", c.ID)
+}
 
 // GetName ...
 func (c *Client) GetName() string {
@@ -65,7 +64,7 @@ func (c *Client) GetName() string {
 
 // GetId osin.Client
 func (c *Client) GetId() string { // justifying
-	return c.Code
+	return c.ID
 }
 
 // GetSecret osin.Client
@@ -85,7 +84,7 @@ func (c *Client) GetUserData() interface{} {
 
 // CopyFrom ...
 func (c *Client) CopyFrom(other storage.Client) {
-	c.Code = other.GetId()
+	c.ID = other.GetId()
 	c.Secret = other.GetSecret()
 	c.RedirectURI = other.GetRedirectUri()
 
@@ -98,9 +97,9 @@ func (c *Client) CopyFrom(other storage.Client) {
 }
 
 // NewClient ...
-func NewClient(code, secret, uri string) (c *Client) {
+func NewClient(id, secret, uri string) (c *Client) {
 	c = &Client{
-		Code:        code,
+		ID:          id,
 		Secret:      secret,
 		RedirectURI: uri,
 		CreatedAt:   time.Now(),
